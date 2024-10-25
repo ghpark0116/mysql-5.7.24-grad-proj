@@ -1848,7 +1848,10 @@ innobase_start_or_create_for_mysql(void)
 	fsp_init();
 	log_init();
 
-	recv_sys_create();
+    uintmax_t analysis_s_time = ut_time_us(NULL);
+    ib::info() << "=====ANALYSIS START TIME===== " << analysis_s_time;
+
+    recv_sys_create();
 	recv_sys_init(buf_pool_get_curr_size());
 	lock_sys_create(srv_lock_table_size);
 	srv_start_state_set(SRV_START_STATE_LOCK_SYS);
@@ -2223,9 +2226,19 @@ files_checked:
 		/* We always try to do a recovery, even if the database had
 		been shut down normally: this is the normal startup path */
 
-		err = recv_recovery_from_checkpoint_start(flushed_lsn);
+        uintmax_t analysis_s_time_2 = ut_time_us(NULL);
+        ib::info() << "=====ANALYSIS START TIME 2===== " << analysis_s_time_2;
 
-		recv_sys->dblwr.pages.clear();
+        err = recv_recovery_from_checkpoint_start(flushed_lsn);
+
+        uintmax_t analysis_e_time = ut_time_us(NULL);
+        ib::info() << "=====ANALYSIS END TIME===== " << analysis_e_time;
+        ib::info() << "=====TOTAL ANALYSIS TIME===== " << analysis_e_time - analysis_s_time;
+
+        uintmax_t redo_s_time = analysis_e_time;
+        ib::info() << "=====REDO START TIME===== " << redo_s_time;
+
+        recv_sys->dblwr.pages.clear();
 
 		if (err == DB_SUCCESS) {
 			/* Initialize the change buffer. */
@@ -2262,7 +2275,11 @@ files_checked:
 			}
 		}
 
-		if (recv_sys->found_corrupt_log) {
+        uintmax_t redo_e_time = ut_time_us(NULL);
+        ib::info() << "=====REDO END TIME===== " << redo_e_time;
+        ib::info() << "=====TOTAL REDO TIME===== " << redo_e_time - redo_s_time;
+
+        if (recv_sys->found_corrupt_log) {
 			ib::warn()
 				<< "The log file may have been corrupt and it"
 				" is possible that the log scan or parsing"
@@ -2467,7 +2484,10 @@ files_checked:
 		}
 	}
 
-	/* The number of rsegs that exist in InnoDB is given by status
+    uintmax_t undo_log = ut_time_us(NULL);
+    ib::info() << "=====initialize undo log lists TIME=====" << undo_log;
+
+    /* The number of rsegs that exist in InnoDB is given by status
 	variable srv_available_undo_logs. The number of rsegs to use can
 	be set using the dynamic global variable srv_rollback_segments. */
 
