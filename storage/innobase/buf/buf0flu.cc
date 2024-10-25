@@ -1789,7 +1789,166 @@ buf_do_flush_list_batch(
 
 		prev = UT_LIST_GET_PREV(list, bpage);
 		buf_pool->flush_hp.set(prev);
+
+        BPageMutex* block_mutex;
+        block_mutex = buf_page_get_mutex(bpage);
+
         buf_flush_list_mutex_exit(buf_pool);
+
+        mutex_enter(block_mutex);
+
+        if (!is_predefined_tablespace(bpage->id.space()) && buf_flush_ready_for_flush(bpage, BUF_FLUSH_LIST) /*&& bpage->update_count > 1*/) {
+            // fprintf(stderr, "CKPT s: %u p: %u cnt: %lu real_old: %lu old: %lu\n", bpage->id.space(), bpage->id.page_no(), bpage->ckpt_count, bpage->real_oldest_modification, bpage->oldest_modification);
+
+            // fprintf(stderr, "s: %u p: %u ckpt_cnt: %lu up_cnt: %u old: %u\n", bpage->id.space(), bpage->id.page_no(), bpage->ckpt_count, bpage->update_count, bpage->old);
+
+            // ib::info() << "s: " << bpage->id.space() << " p: " << bpage->id.page_no() << " ckpt_cnt: " << bpage->ckpt_count << " up_cnt: " << bpage->update_count << " old lsn: " << bpage->oldest_modification << " new lsn: " << bpage->newest_modification;
+            // ib::info() << "up_cnt " << bpage->update_count;
+
+            // bpage->ckpt_count++;
+
+            // if (bpage->ckpt_count >= 6) {
+            if (bpage->update_count > 2) {
+                if (bpage->skip_count == 2) {  // 2
+                    // if (bpage->ckpt_count == 0) { // f-s-s-f
+                    // if (bpage->ckpt_count == bpage->ckpt_count_max) { //dynamic
+                    // fprintf(stderr, "FLUSH f: %d s: %u p: %u real_old: %lu old: %lu state: %d flush: %d inst: %lu\n", bpage->ckpt_count, bpage->id.space(), bpage->id.page_no(), bpage->real_oldest_modification, bpage->oldest_modification, bpage->state, bpage->flush_type, buf_pool->instance_no);
+
+                    bpage->skip_count = 0;
+
+                    // bpage->update_count = 0;
+
+                    // bpage->ckpt_count = 1; // f-s-s-f
+                    // dynamic
+                    // if (bpage->ckpt_count_max == ULINT_MAX) {
+                    // 	bpage->ckpt_count_max--;
+                    // 	ib::info() << "ckpt_count_max reached max";
+                    // }
+                    // else {
+                    // 	bpage->ckpt_count_max++;
+                    // }
+                } else {
+                    // fprintf(stderr, "SKIP s: %u p: %u\n", bpage->id.space(), bpage->id.page_no());
+
+                    // if (!bpage->in_skip_list) {
+                    // 	buf_skip_list_mutex_enter(buf_pool);
+
+                    // 	buf_page_t* prev_skip = NULL;
+                    // 	buf_page_t* skip_page = UT_LIST_GET_FIRST(buf_pool->skip_list);
+
+                    // 	while (skip_page != NULL && skip_page->real_oldest_modification > bpage->oldest_modification) {
+                    // 		ut_ad(skip_page->in_skip_list);
+                    // 		prev_skip = skip_page;
+                    // 		skip_page = UT_LIST_GET_NEXT(skip, skip_page);
+                    // 	}
+
+                    // 	if (prev_skip == NULL) {
+                    // 		UT_LIST_ADD_FIRST(buf_pool->skip_list, bpage);
+                    // 		// fprintf(stderr, "SKIP INSERT FIRST f: %d s: %u p: %u real_old: %lu old: %lu state: %d flush: %d inst: %lu\n", bpage->ckpt_count, bpage->id.space(), bpage->id.page_no(), bpage->real_oldest_modification, bpage->oldest_modification, bpage->state, bpage->flush_type, buf_pool->instance_no);
+                    // 	} else {
+                    // 		UT_LIST_INSERT_AFTER(buf_pool->skip_list, prev_skip, bpage);
+                    // 		// fprintf(stderr, "SKIP INSERT AFTER f: %d s: %u p: %u real_old: %lu old: %lu state: %d flush: %d inst: %lu\n", bpage->ckpt_count, bpage->id.space(), bpage->id.page_no(), bpage->real_oldest_modification, bpage->oldest_modification, bpage->state, bpage->flush_type, buf_pool->instance_no);
+                    // 	}
+
+                    // 	bpage->real_oldest_modification = bpage->oldest_modification;
+                    // 	bpage->in_skip_list = TRUE;
+
+                    // 	buf_skip_list_mutex_exit(buf_pool);
+                    // }
+
+                    // ghpark need
+                    // ib::info()<< "SKIP ckpt flag : " << bpage->ckpt_count << " Skipped bpage's space, bpage's num : " << bpage->id.space() << " " << bpage->id.page_no();
+                    // ib::info()<< "SKIP f: " << bpage->ckpt_count << " s: " << bpage->id.space() << " p: " << bpage->id.page_no() << " old: " << bpage->oldest_modification;
+
+                    // fprintf(stderr, "SKIP f: %d s: %u p: %u real_old: %lu old: %lu state: %d flush: %d inst: %lu\n", bpage->ckpt_count, bpage->id.space(), bpage->id.page_no(), bpage->real_oldest_modification, bpage->oldest_modification, bpage->state, bpage->flush_type, buf_pool->instance_no);
+                    // bpage->real_oldest_modification = bpage->oldest_modification;
+                    bpage->skip_count++;
+                    // bpage->ckpt_count = (bpage->ckpt_count + 1) % 3; // f-s-s-f
+
+                    buf_flush_list_mutex_enter(buf_pool);
+
+                    /* Important that we adjust the hazard pointer before removing
+                    the bpage from flush list. */
+                    buf_pool->flush_hp.adjust(bpage);
+
+                    switch (buf_page_get_state(bpage)) {
+                        case BUF_BLOCK_POOL_WATCH:
+                        case BUF_BLOCK_ZIP_PAGE:
+                            /* Clean compressed pages should not be on the flush list */
+                        case BUF_BLOCK_NOT_USED:
+                        case BUF_BLOCK_READY_FOR_USE:
+                        case BUF_BLOCK_MEMORY:
+                        case BUF_BLOCK_REMOVE_HASH:
+                            ut_error;
+                            return ULINT_UNDEFINED;
+                        case BUF_BLOCK_ZIP_DIRTY:
+                            buf_page_set_state(bpage, BUF_BLOCK_ZIP_PAGE);
+                            UT_LIST_REMOVE(buf_pool->flush_list, bpage);
+                            break;
+                        case BUF_BLOCK_FILE_PAGE:
+                            UT_LIST_REMOVE(buf_pool->flush_list, bpage);
+                            break;
+                    }
+
+                    /* If the flush_rbt is active then delete from there as well. */
+                    if (buf_pool->flush_rbt != NULL) {
+                        buf_flush_delete_from_flush_rbt(bpage);
+                    }
+
+                    /* Must be done after we have removed it from the flush_rbt
+                    because we assert on in_flush_list in comparison function. */
+                    // ghpark
+                    // ut_d(bpage->in_flush_list = FALSE);
+                    bpage->in_flush_list = FALSE;
+
+                    buf_pool->stat.flush_list_bytes -= bpage->size.physical();
+
+                    bpage->oldest_modification = bpage->newest_modification;
+
+                    // bpage->update_count = 0;
+
+                    /* If there is an observer that want to know if the asynchronous
+                    flushing was done then notify it. */
+                    if (bpage->flush_observer != NULL) {
+                        bpage->flush_observer->notify_remove(buf_pool, bpage);
+
+                        bpage->flush_observer = NULL;
+                    }
+
+                    // if (!buf_pool->flush_hp.is_hp(prev)) {
+                    // 	buf_pool->flush_hp.set(prev);
+                    // 	// fprintf(stderr, "RESET hp f: %d s: %u p: %u\n", bpage->ckpt_count, bpage->id.space(), bpage->id.page_no());
+                    // }
+
+                    // ib::info() << "SKIP " << bpage->id.space() << " " << bpage->id.page_no() << " " << bpage->ckpt_count << " " << bpage->update_count;
+
+                    buf_flush_list_mutex_exit(buf_pool);
+
+                    mutex_exit(block_mutex);
+
+                    buf_flush_list_mutex_enter(buf_pool);
+
+                    --len;
+
+                    count++;
+
+                    skip++;
+
+                    continue;
+                }  // end of ckpt_count if
+                // }
+            }  // end of update_count if
+            // } // end of data page if
+
+            // flush page의 sublist 위치, LSN 확인, modified by hj
+            // ib::info() << "bpage old boolean : " << buf_page_is_old(bpage) << " bpage LSN : " << bpage->oldest_modification;
+            // ib::info() << "bpage space : " << bpage->id.space() << " bpage num : " << bpage->id.page_no();
+
+            // ghpark need
+            // ib::info() << "Checkpointed bpage's space, bpage's num : " << bpage->id.space()  << ", " << bpage->id.page_no();
+        }  // parameter check if
+
+        mutex_exit(block_mutex);
 
 #ifdef UNIV_DEBUG
 		bool flushed =
