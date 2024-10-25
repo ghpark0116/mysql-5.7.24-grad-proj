@@ -52,6 +52,10 @@ Created 11/11/1995 Heikki Tuuri
 #include "fsp0sysspace.h"
 #include "ut0stage.h"
 
+#ifdef UNIV_F2CKPT
+#include "ckpt0mon.h"
+#endif
+
 #ifdef UNIV_LINUX
 /* include defs for CPU time priority settings */
 #include <unistd.h>
@@ -443,8 +447,9 @@ buf_flush_insert_into_flush_list(
 	ut_ad(buf_block_get_state(block) == BUF_BLOCK_FILE_PAGE);
 	ut_ad(!block->page.in_flush_list);
 
-	ut_d(block->page.in_flush_list = TRUE);
-	block->page.oldest_modification = lsn;
+	// ut_d(block->page.in_flush_list = TRUE);
+    block->page.in_flush_list = TRUE;
+    block->page.oldest_modification = lsn;
 
 	UT_LIST_ADD_FIRST(buf_pool->flush_list, &block->page);
 
@@ -680,9 +685,10 @@ buf_flush_remove(
 
 	/* Must be done after we have removed it from the flush_rbt
 	because we assert on in_flush_list in comparison function. */
-	ut_d(bpage->in_flush_list = FALSE);
+	// ut_d(bpage->in_flush_list = FALSE);
+    bpage->in_flush_list = FALSE;
 
-	buf_pool->stat.flush_list_bytes -= bpage->size.physical();
+    buf_pool->stat.flush_list_bytes -= bpage->size.physical();
 
 	bpage->oldest_modification = 0;
 
@@ -753,9 +759,10 @@ buf_flush_relocate_on_flush_list(
 
 	/* Must be done after we have removed it from the flush_rbt
 	because we assert on in_flush_list in comparison function. */
-	ut_d(bpage->in_flush_list = FALSE);
+	// ut_d(bpage->in_flush_list = FALSE);
+    bpage->in_flush_list = FALSE;
 
-	prev = UT_LIST_GET_PREV(list, bpage);
+    prev = UT_LIST_GET_PREV(list, bpage);
 	UT_LIST_REMOVE(buf_pool->flush_list, bpage);
 
 	if (prev) {
@@ -788,9 +795,15 @@ buf_flush_write_complete(
 
 	ut_ad(bpage);
 
-	buf_flush_remove(bpage);
+	// buf_flush_remove(bpage);
 
-	flush_type = buf_page_get_flush_type(bpage);
+    if (bpage->in_flush_list) {
+        buf_flush_remove(bpage);
+    } else {
+        bpage->oldest_modification = 0;
+    }
+
+    flush_type = buf_page_get_flush_type(bpage);
 	buf_pool->n_flush[flush_type]--;
 
 	if (buf_pool->n_flush[flush_type] == 0
@@ -1072,7 +1085,12 @@ buf_flush_write_block_low(
 		break;
 	}
 
-	/* Disable use of double-write buffer for temporary tablespace.
+#ifdef UNIV_F2CKPT
+    // (jhpark): keep monitoring write flush type for TPC-C Benchmark
+    ckpt_add_write_type(bpage->id.space(), flush_type);
+#endif
+
+    /* Disable use of double-write buffer for temporary tablespace.
 	Given the nature and load of temporary tablespace doublewrite buffer
 	adds an overhead during flushing. */
 
@@ -1771,7 +1789,7 @@ buf_do_flush_list_batch(
 
 		prev = UT_LIST_GET_PREV(list, bpage);
 		buf_pool->flush_hp.set(prev);
-		buf_flush_list_mutex_exit(buf_pool);
+        buf_flush_list_mutex_exit(buf_pool);
 
 #ifdef UNIV_DEBUG
 		bool flushed =
@@ -1855,8 +1873,15 @@ buf_flush_batch(
 		count = buf_do_LRU_batch(buf_pool, min_n);
 		break;
 	case BUF_FLUSH_LIST:
-		count = buf_do_flush_list_batch(buf_pool, min_n, lsn_limit);
-		break;
+#ifdef UNIV_F2CKPT
+        // (jhpark): we disable adaptive flush!
+        count = buf_do_flush_list_batch(buf_pool, min_n, lsn_limit);
+        srv_stats.flushlist_ckpt_cnt.inc();
+        srv_stats.flushlist_page_cnt.add(count);
+#else
+        count = buf_do_flush_list_batch(buf_pool, min_n, lsn_limit);
+#endif
+        break;
 	default:
 		ut_error;
 	}
@@ -2585,7 +2610,14 @@ page_cleaner_flush_pages_recommendation(
 
 	pct_total = ut_max(pct_for_dirty, pct_for_lsn);
 
-	/* Estimate pages to be flushed for the lsn progress */
+#ifdef UNIV_F2CKPT
+    // (jhpark): this determines that LSN-based/Dirty-page-based checkpoint
+    // in fuzzy checkpoint process. (refer to mijin's slide)
+    (pct_for_dirty > pct_for_lsn) ? srv_stats.dirty_ckpt_cnt.inc()
+                                  : srv_stats.log_ckpt_cnt.inc();
+#endif
+
+    /* Estimate pages to be flushed for the lsn progress */
 	ulint	sum_pages_for_lsn = 0;
 	lsn_t	target_lsn = oldest_lsn
 			     + lsn_avg_rate * buf_flush_lsn_scan_factor;
