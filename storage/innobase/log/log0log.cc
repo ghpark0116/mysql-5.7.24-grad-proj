@@ -331,7 +331,13 @@ log_margin_checkpoint_age(
 		if (!flushed_enough) {
 			os_thread_sleep(100000);
 		}
-		log_checkpoint(true, false);
+
+#ifdef UNIV_F2CKPT
+        // (jhpark): this is the smae as *sync flush* in mijin's slide
+        srv_stats.sync_ckpt_cnt_2.inc();
+#endif
+
+        log_checkpoint(true, false);
 
 		log_mutex_enter();
 	}
@@ -1986,7 +1992,12 @@ loop:
 	}
 
 	if (do_checkpoint) {
-		log_checkpoint(checkpoint_sync, FALSE);
+
+#ifdef UNIV_F2CKPT
+        srv_stats.sync_ckpt_cnt.inc();
+#endif
+
+        log_checkpoint(checkpoint_sync, FALSE);
 
 		if (checkpoint_sync) {
 

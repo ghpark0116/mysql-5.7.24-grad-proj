@@ -55,6 +55,10 @@ Created 10/25/1995 Heikki Tuuri
 #include "btr0sea.h"
 #include "log0log.h"
 
+#ifdef UNIV_F2CKPT
+#include "ckpt0mon.h"
+#endif
+
 /** Tries to close a file in the LRU list. The caller must hold the fil_sys
 mutex.
 @return true if success, false if should retry later; since i/o's
@@ -906,7 +910,11 @@ add_size:
 		UT_LIST_ADD_FIRST(fil_system->LRU, node);
 	}
 
-	return(true);
+#ifdef UNIV_F2CKPT
+    ckpt_set_space_id_for_tpcc(node->name, space_id);
+#endif
+
+    return(true);
 }
 
 /** Close a file node.

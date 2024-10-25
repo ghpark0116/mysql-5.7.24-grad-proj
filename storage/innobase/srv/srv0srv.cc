@@ -1355,7 +1355,140 @@ srv_printf_innodb_monitor(
 	srv_n_rows_deleted_old = srv_stats.n_rows_deleted;
 	srv_n_rows_read_old = srv_stats.n_rows_read;
 
-	fputs("----------------------------\n"
+#ifdef UNIV_F2CKPT
+    fputs(
+        "---------------------\n"
+        "Checkpoint Monitoring\n"
+        "---------------------\n",
+        file);
+    fprintf(file,
+            "Master     :             " ULINTPF
+            "\n"
+            "Flush      :             " ULINTPF
+            "\n"
+            "Dirty      :             " ULINTPF
+            "\n"
+            "Log        :             " ULINTPF
+            "\n"
+            "Sync       :             " ULINTPF
+            "\n"
+            "Sync Oth   :             " ULINTPF
+            "\n"
+            "Flush Page :             " ULINTPF
+            "\n"
+            "Avg.  Page :             %.2f      \n",
+            (ulint)srv_stats.master_ckpt_cnt, (ulint)srv_stats.flushlist_ckpt_cnt,
+            (ulint)srv_stats.dirty_ckpt_cnt, (ulint)srv_stats.log_ckpt_cnt,
+            (ulint)srv_stats.sync_ckpt_cnt, (ulint)srv_stats.sync_ckpt_cnt_2, (ulint)srv_stats.flushlist_page_cnt,
+            (float)(srv_stats.flushlist_page_cnt / srv_stats.flushlist_ckpt_cnt));
+
+    fputs(
+        "---------------------------------\n"
+        "TPC-C Table Flush Type Monitoring\n"
+        "---------------------------------\n",
+        file);
+
+    fputs("Warehouse\n", file);
+    fprintf(file,
+            "LRU  Writes:             " ULINTPF
+            "\n"
+            "CKPT Writes:             " ULINTPF
+            "\n"
+            "SPF  Writes:             " ULINTPF
+            "\n"
+            "SKIP  Writes:            " ULINTPF "\n\n",
+            (ulint)srv_stats.tpcc_wh_lru, (ulint)srv_stats.tpcc_wh_ckpt, (ulint)srv_stats.tpcc_wh_spf, (ulint)srv_stats.tpcc_wh_skip);
+
+    fputs("Stock\n", file);
+    fprintf(file,
+            "LRU  Writes:             " ULINTPF
+            "\n"
+            "CKPT Writes:             " ULINTPF
+            "\n"
+            "SPF  Writes:             " ULINTPF
+            "\n"
+            "SKIP  Writes:            " ULINTPF "\n\n",
+            (ulint)srv_stats.tpcc_st_lru, (ulint)srv_stats.tpcc_st_ckpt, (ulint)srv_stats.tpcc_st_spf, (ulint)srv_stats.tpcc_st_skip);
+
+    fputs("Item\n", file);
+    fprintf(file,
+            "LRU  Writes:             " ULINTPF
+            "\n"
+            "CKPT Writes:             " ULINTPF
+            "\n"
+            "SPF  Writes:             " ULINTPF
+            "\n"
+            "SKIP  Writes:            " ULINTPF "\n\n",
+            (ulint)srv_stats.tpcc_it_lru, (ulint)srv_stats.tpcc_it_ckpt, (ulint)srv_stats.tpcc_it_spf, (ulint)srv_stats.tpcc_it_skip);
+
+    fputs("District\n", file);
+    fprintf(file,
+            "LRU  Writes:             " ULINTPF
+            "\n"
+            "CKPT Writes:             " ULINTPF
+            "\n"
+            "SPF  Writes:             " ULINTPF
+            "\n"
+            "SKIP  Writes:            " ULINTPF "\n\n",
+            (ulint)srv_stats.tpcc_di_lru, (ulint)srv_stats.tpcc_di_ckpt, (ulint)srv_stats.tpcc_di_spf, (ulint)srv_stats.tpcc_di_skip);
+
+    fputs("Customer\n", file);
+    fprintf(file,
+            "LRU  Writes:             " ULINTPF
+            "\n"
+            "CKPT Writes:             " ULINTPF
+            "\n"
+            "SPF  Writes:             " ULINTPF
+            "\n"
+            "SKIP  Writes:            " ULINTPF "\n\n",
+            (ulint)srv_stats.tpcc_cu_lru, (ulint)srv_stats.tpcc_cu_ckpt, (ulint)srv_stats.tpcc_cu_spf, (ulint)srv_stats.tpcc_cu_skip);
+
+    fputs("Orders\n", file);
+    fprintf(file,
+            "LRU  Writes:             " ULINTPF
+            "\n"
+            "CKPT Writes:             " ULINTPF
+            "\n"
+            "SPF  Writes:             " ULINTPF
+            "\n"
+            "SKIP  Writes:            " ULINTPF "\n\n",
+            (ulint)srv_stats.tpcc_od_lru, (ulint)srv_stats.tpcc_od_ckpt, (ulint)srv_stats.tpcc_od_spf, (ulint)srv_stats.tpcc_od_skip);
+
+    fputs("New Orders\n", file);
+    fprintf(file,
+            "LRU  Writes:             " ULINTPF
+            "\n"
+            "CKPT Writes:             " ULINTPF
+            "\n"
+            "SPF  Writes:             " ULINTPF
+            "\n"
+            "SKIP  Writes:            " ULINTPF "\n\n",
+            (ulint)srv_stats.tpcc_no_lru, (ulint)srv_stats.tpcc_no_ckpt, (ulint)srv_stats.tpcc_no_spf, (ulint)srv_stats.tpcc_no_skip);
+
+    fputs("History\n", file);
+    fprintf(file,
+            "LRU  Writes:             " ULINTPF
+            "\n"
+            "CKPT Writes:             " ULINTPF
+            "\n"
+            "SPF  Writes:             " ULINTPF
+            "\n"
+            "SKIP  Writes:            " ULINTPF "\n\n",
+            (ulint)srv_stats.tpcc_hi_lru, (ulint)srv_stats.tpcc_hi_ckpt, (ulint)srv_stats.tpcc_hi_spf, (ulint)srv_stats.tpcc_hi_skip);
+
+    fputs("ORDER_LINE\n", file);
+    fprintf(file,
+            "LRU  Writes:             " ULINTPF
+            "\n"
+            "CKPT Writes:             " ULINTPF
+            "\n"
+            "SPF  Writes:             " ULINTPF
+            "\n"
+            "SKIP  Writes:            " ULINTPF "\n\n",
+            (ulint)srv_stats.tpcc_ol_lru, (ulint)srv_stats.tpcc_ol_ckpt, (ulint)srv_stats.tpcc_ol_spf, (ulint)srv_stats.tpcc_ol_skip);
+#endif
+
+    fputs("----------------------------\n"
 	      "END OF INNODB MONITOR OUTPUT\n"
 	      "============================\n", file);
 	mutex_exit(&srv_innodb_monitor_mutex);
@@ -2166,12 +2299,25 @@ srv_master_do_active_tasks(void)
 	}
 
 	/* Make a new checkpoint */
-	if (cur_time % SRV_MASTER_CHECKPOINT_INTERVAL == 0) {
-		srv_main_thread_op_info = "making checkpoint";
-		log_checkpoint(TRUE, FALSE);
-		MONITOR_INC_TIME_IN_MICRO_SECS(
-			MONITOR_SRV_CHECKPOINT_MICROSECOND, counter_time);
-	}
+#ifdef UNIV_F2CKPT
+    // (jhpark): we do not invoke checkpoint periodically
+    if (cur_time % SRV_MASTER_CHECKPOINT_INTERVAL == 0) {
+        srv_stats.master_ckpt_cnt.inc();
+
+        srv_main_thread_op_info = "making checkpoint";
+        log_checkpoint(TRUE, FALSE);
+        MONITOR_INC_TIME_IN_MICRO_SECS(
+            MONITOR_SRV_CHECKPOINT_MICROSECOND, counter_time);
+    }
+
+#else
+    if (cur_time % SRV_MASTER_CHECKPOINT_INTERVAL == 0) {
+        srv_main_thread_op_info = "making checkpoint";
+        log_checkpoint(TRUE, FALSE);
+        MONITOR_INC_TIME_IN_MICRO_SECS(
+            MONITOR_SRV_CHECKPOINT_MICROSECOND, counter_time);
+    }
+#endif
 }
 
 /*********************************************************************//**
@@ -2246,7 +2392,10 @@ srv_master_do_idle_tasks(void)
 
 	/* Make a new checkpoint */
 	srv_main_thread_op_info = "making checkpoint";
-	log_checkpoint(TRUE, FALSE);
+#ifdef UNIV_F2CKPT
+    srv_stats.master_ckpt_cnt.inc();
+#endif
+    log_checkpoint(TRUE, FALSE);
 	MONITOR_INC_TIME_IN_MICRO_SECS(MONITOR_SRV_CHECKPOINT_MICROSECOND,
 				       counter_time);
 }

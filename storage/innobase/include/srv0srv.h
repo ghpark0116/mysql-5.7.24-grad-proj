@@ -67,7 +67,67 @@ struct srv_stats_t {
 	typedef ib_counter_t<lint, 1, single_indexer_t> lint_ctr_1_t;
 	typedef ib_counter_t<int64_t, 1, single_indexer_t> int64_ctr_1_t;
 
-	/** Count the amount of data written in total (in bytes) */
+#ifdef UNIV_F2CKPT
+    // (jhpark): monitoring values for checkpoint
+    // we defined the four types of checkpoint
+    // `master_ckpt` : checkpoint triggered by master thread periodically.
+    // `flushlist_ckpt` : checkpoint triggered when there is no clean buffer in buffer pool.
+    // `dirty_ckpt` : checkpoint triggered when the dirty page rtio exceed threshold.
+    // `log_ckpt` : checkpoint triggered based on LSN in fuzzy checkpoint
+    // `sync_ckpt` : checkpoint tirggered when log module need space.
+    ulint_ctr_1_t master_ckpt_cnt;
+    ulint_ctr_1_t dirty_ckpt_cnt;
+    ulint_ctr_1_t log_ckpt_cnt;
+    ulint_ctr_1_t sync_ckpt_cnt;
+    ulint_ctr_1_t sync_ckpt_cnt_2;
+
+    ulint_ctr_1_t flushlist_ckpt_cnt;
+    ulint_ctr_1_t flushlist_page_cnt;
+    // (jhpark): monitoring CHECKPOINT, LRU, and SINGLE_PAGE_FLUSH write for TPC-C Tables
+    // warehouse / stock / item / district / customer / order / new-order / history / order-line
+
+    ulint_ctr_1_t tpcc_wh_ckpt;
+    ulint_ctr_1_t tpcc_st_ckpt;
+    ulint_ctr_1_t tpcc_it_ckpt;
+    ulint_ctr_1_t tpcc_di_ckpt;
+    ulint_ctr_1_t tpcc_cu_ckpt;
+    ulint_ctr_1_t tpcc_od_ckpt;
+    ulint_ctr_1_t tpcc_no_ckpt;
+    ulint_ctr_1_t tpcc_hi_ckpt;
+    ulint_ctr_1_t tpcc_ol_ckpt;
+
+    ulint_ctr_1_t tpcc_wh_lru;
+    ulint_ctr_1_t tpcc_st_lru;
+    ulint_ctr_1_t tpcc_it_lru;
+    ulint_ctr_1_t tpcc_di_lru;
+    ulint_ctr_1_t tpcc_cu_lru;
+    ulint_ctr_1_t tpcc_od_lru;
+    ulint_ctr_1_t tpcc_no_lru;
+    ulint_ctr_1_t tpcc_hi_lru;
+    ulint_ctr_1_t tpcc_ol_lru;
+
+    ulint_ctr_1_t tpcc_wh_spf;
+    ulint_ctr_1_t tpcc_st_spf;
+    ulint_ctr_1_t tpcc_it_spf;
+    ulint_ctr_1_t tpcc_di_spf;
+    ulint_ctr_1_t tpcc_cu_spf;
+    ulint_ctr_1_t tpcc_od_spf;
+    ulint_ctr_1_t tpcc_no_spf;
+    ulint_ctr_1_t tpcc_hi_spf;
+    ulint_ctr_1_t tpcc_ol_spf;
+
+    ulint_ctr_1_t tpcc_wh_skip;
+    ulint_ctr_1_t tpcc_st_skip;
+    ulint_ctr_1_t tpcc_it_skip;
+    ulint_ctr_1_t tpcc_di_skip;
+    ulint_ctr_1_t tpcc_cu_skip;
+    ulint_ctr_1_t tpcc_od_skip;
+    ulint_ctr_1_t tpcc_no_skip;
+    ulint_ctr_1_t tpcc_hi_skip;
+    ulint_ctr_1_t tpcc_ol_skip;
+#endif
+
+    /** Count the amount of data written in total (in bytes) */
 	ulint_ctr_1_t		data_written;
 
 	/** Number of the log write requests done */
@@ -889,7 +949,19 @@ struct export_var_t{
 #ifdef UNIV_DEBUG
 	ulint innodb_buffer_pool_pages_latched;	/*!< Latched pages */
 #endif /* UNIV_DEBUG */
-	ulint innodb_buffer_pool_read_requests;	/*!< buf_pool->stat.n_page_gets */
+
+#ifdef UNIV_F2CKPT
+    ulint master_ckpt_cnt;
+    ulint dirty_ckpt_cnt;
+    ulint log_ckpt_cnt;
+    ulint sync_ckpt_cnt;
+    ulint sync_ckpt_cnt_2;
+
+    ulint flushlist_ckpt_cnt;
+    ulint flushlist_page_cnt;
+#endif
+
+    ulint innodb_buffer_pool_read_requests;	/*!< buf_pool->stat.n_page_gets */
 	ulint innodb_buffer_pool_reads;		/*!< srv_buf_pool_reads */
 	ulint innodb_buffer_pool_wait_free;	/*!< srv_buf_pool_wait_free */
 	ulint innodb_buffer_pool_pages_flushed;	/*!< srv_buf_pool_flushed */
