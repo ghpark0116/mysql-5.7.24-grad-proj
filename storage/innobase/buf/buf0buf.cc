@@ -4997,9 +4997,13 @@ buf_page_init_low(
 	bpage->access_time = 0;
 	bpage->newest_modification = 0;
 	bpage->oldest_modification = 0;
-	HASH_INVALIDATE(bpage, hash);
 
-	ut_d(bpage->file_page_was_freed = FALSE);
+    bpage->skip_count = 0;
+    bpage->update_count = 0;
+
+    HASH_INVALIDATE(bpage, hash);
+
+    ut_d(bpage->file_page_was_freed = FALSE);
 }
 
 /** Inits a page to the buffer buf_pool.
@@ -5281,8 +5285,10 @@ buf_page_init_for_read(
 
 		ut_d(bpage->in_page_hash = FALSE);
 		ut_d(bpage->in_zip_hash = FALSE);
-		ut_d(bpage->in_flush_list = FALSE);
-		ut_d(bpage->in_free_list = FALSE);
+		// ut_d(bpage->in_flush_list = FALSE);
+        block->page.in_flush_list = FALSE;
+
+        ut_d(bpage->in_free_list = FALSE);
 		ut_d(bpage->in_LRU_list = FALSE);
 
 		ut_d(bpage->in_page_hash = TRUE);
