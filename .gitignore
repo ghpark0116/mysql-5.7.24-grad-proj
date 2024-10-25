@@ -8,7 +8,7 @@ cmd-line-utils/
 dbug/
 Docs/
 extra/
-include/
+/mysql-5.7.24-grad-proj/include
 libbinlogevents/
 libevent/
 libmysqld/
