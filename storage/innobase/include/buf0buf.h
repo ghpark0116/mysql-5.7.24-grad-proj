@@ -1613,6 +1613,8 @@ public:
 					BUF_BLOCK_REMOVE_HASH or
 					BUF_BLOCK_READY_IN_USE. */
 
+    ibool in_flush_list;
+
 #ifdef UNIV_DEBUG
 	ibool		in_flush_list;	/*!< TRUE if in buf_pool->flush_list;
 					when buf_pool->flush_list_mutex is
@@ -1680,6 +1682,10 @@ public:
 					0 if the block was never accessed
 					in the buffer pool. Protected by
 					block mutex */
+
+    ulint 		skip_count;
+    ulint 		update_count;
+
 # ifdef UNIV_DEBUG
 	ibool		file_page_was_freed;
 					/*!< this is set to TRUE when
